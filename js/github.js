@@ -2,7 +2,7 @@ const TOKEN_KEY = 'irctc_github_token';
 const SHA_KEY = 'irctc_journeys_sha';
 
 // Update these to match your GitHub repo before deploying
-export const GITHUB_OWNER = 'YOUR_GITHUB_USERNAME';
+export const GITHUB_OWNER = 'coddinginjava';
 export const GITHUB_REPO = 'my-irctc-app';
 export const DATA_PATH = 'data/journeys.json';
 
