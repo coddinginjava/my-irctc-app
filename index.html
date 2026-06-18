@@ -24,11 +24,11 @@
     </header>
 
     <main class="main">
-      <section class="hero" aria-labelledby="booking-heading">
-        <p class="hero__label">Next advance booking opens on</p>
-        <h2 class="hero__date" id="bookingDate">—</h2>
-        <p class="hero__hint">IRCTC allows booking 60 days ahead (IST)</p>
-      </section>
+      <button type="button" class="hero" id="bookingHeroBtn" aria-labelledby="booking-heading">
+        <p class="hero__label" id="booking-heading">Next advance booking opens on</p>
+        <span class="hero__date" id="bookingDate">—</span>
+        <p class="hero__hint">Tap to check when you can book for a journey date · IST</p>
+      </button>
 
       <section class="toolbar" aria-label="Journey filters">
         <div class="toolbar__search">
@@ -160,6 +160,63 @@
       <div class="modal__actions">
         <button type="button" class="btn btn--ghost" id="deleteCancel">Cancel</button>
         <button type="button" class="btn btn--danger" id="deleteConfirm">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Booking date calculator modal -->
+  <dialog class="modal" id="bookingCalcModal">
+    <div class="modal__content">
+      <div class="modal__header">
+        <h2 class="modal__title">When can I book?</h2>
+        <button type="button" class="modal__close" id="bookingCalcClose" aria-label="Close">&times;</button>
+      </div>
+      <p class="modal__desc">
+        Select your journey date. IRCTC advance booking opens <strong>60 days before</strong> travel (IST).
+      </p>
+      <label class="field">
+        <span class="field__label">Journey date</span>
+        <input type="date" class="input" id="travelDateInput">
+      </label>
+      <div class="booking-result" id="bookingResult" hidden>
+        <div class="booking-result__row">
+          <span class="booking-result__label">Journey date</span>
+          <span class="booking-result__value" id="resultTravelDate">—</span>
+        </div>
+        <div class="booking-result__row">
+          <span class="booking-result__label">Booking opens on</span>
+          <span class="booking-result__value booking-result__value--highlight" id="resultOpenDate">—</span>
+        </div>
+        <p class="booking-result__status" id="resultStatus"></p>
+      </div>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--primary" id="bookingCalcDone">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Unlock / set passphrase modal -->
+  <dialog class="modal" id="unlockModal">
+    <form class="modal__content" id="unlockForm">
+      <div class="modal__header">
+        <h2 class="modal__title" id="unlockModalTitle">Unlock your journeys</h2>
+        <button type="button" class="modal__close" id="unlockClose" aria-label="Close">&times;</button>
+      </div>
+      <p class="modal__desc" id="unlockModalDesc">
+        Your passphrase never leaves this browser. If you forget it, your data cannot be recovered.
+      </p>
+      <label class="field">
+        <span class="field__label">Passphrase</span>
+        <input type="password" class="input" id="passphraseInput" required autocomplete="off" minlength="8" placeholder="Enter passphrase">
+      </label>
+      <label class="field" id="passphraseConfirmField">
+        <span class="field__label">Confirm passphrase</span>
+        <input type="password" class="input" id="passphraseConfirmInput" autocomplete="off" minlength="8" placeholder="Confirm passphrase">
+      </label>
+      <p class="field__error" id="unlockError" hidden></p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" id="unlockCancel">Cancel</button>
+        <button type="submit" class="btn btn--primary" id="unlockSubmitBtn">Unlock</button>
       </div>
     </form>
   </dialog>

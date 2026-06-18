@@ -26,6 +26,47 @@ function filterByName(journeys, query) {
   );
 }
 
+function parsePassengerStatus(passenger) {
+  const explicit = (passenger.status || '').trim().toUpperCase();
+  if (['CNF', 'RAC', 'WL', 'TLWL'].includes(explicit)) return explicit;
+
+  const text = (passenger.seat || '').toUpperCase();
+  if (text.includes('TLWL')) return 'TLWL';
+  if (text.includes('WL')) return 'WL';
+  if (text.includes('RAC')) return 'RAC';
+  if (text.includes('CNF')) return 'CNF';
+  return null;
+}
+
+function getJourneyStatusClass(passengers) {
+  const statuses = passengers.map(parsePassengerStatus).filter(Boolean);
+  if (statuses.some((s) => s === 'WL' || s === 'TLWL')) return 'accordion__item--wl';
+  if (statuses.some((s) => s === 'RAC')) return 'accordion__item--rac';
+  if (statuses.some((s) => s === 'CNF')) return 'accordion__item--cnf';
+  return '';
+}
+
+function getTrainTimeTag(boardingTime) {
+  if (!boardingTime) return null;
+
+  const [hours] = boardingTime.split(':').map(Number);
+  if (Number.isNaN(hours)) return null;
+
+  if (hours >= 18 || hours < 5) {
+    return { label: 'Evening', className: 'tag tag--evening' };
+  }
+  if (hours >= 12) {
+    return { label: 'Afternoon', className: 'tag tag--afternoon' };
+  }
+  return { label: 'Morning', className: 'tag tag--morning' };
+}
+
+function formatPassengerStatusLabel(status) {
+  if (!status) return '';
+  if (status === 'CNF') return 'CNF';
+  return status;
+}
+
 function validateJourney(data) {
   const errors = [];
   if (!data.pnr?.trim()) errors.push('PNR is required');
@@ -59,7 +100,11 @@ function createJourney(formData) {
     },
     passengers: formData.passengers
       .filter((p) => p.name.trim())
-      .map((p) => ({ name: p.name.trim(), seat: (p.seat || '').trim() })),
+      .map((p) => ({
+        name: p.name.trim(),
+        seat: (p.seat || '').trim(),
+        status: (p.status || '').trim().toUpperCase(),
+      })),
   };
 }
 
@@ -70,4 +115,8 @@ export {
   filterByName,
   validateJourney,
   createJourney,
+  getTrainTimeTag,
+  getJourneyStatusClass,
+  parsePassengerStatus,
+  formatPassengerStatusLabel,
 };

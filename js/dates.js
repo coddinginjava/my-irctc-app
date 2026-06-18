@@ -23,24 +23,52 @@ function getISTParts(date = new Date()) {
   };
 }
 
-function formatISTDate(date = new Date()) {
-  return new Intl.DateTimeFormat('en-IN', {
-    timeZone: IST_TIMEZONE,
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
-}
 
-function addDaysToISTDate(days, fromDate = new Date()) {
-  const { year, month, day } = getISTParts(fromDate);
+function addDaysToISO(isoDate, days) {
+  const { year, month, day } = parseISODateParts(isoDate);
   const utcMidnight = Date.UTC(year, month - 1, day);
   const result = new Date(utcMidnight + days * 24 * 60 * 60 * 1000);
-  return formatISTDate(result);
+  const parts = getISTParts(result);
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+}
+
+function getTodayISO() {
+  const parts = getISTParts();
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+}
+
+function getNextBookingDateISO() {
+  return addDaysToISO(getTodayISO(), 60);
+}
+
+function getBookingOpenDateISO(travelDateISO) {
+  return addDaysToISO(travelDateISO, -60);
+}
+
+function daysBetweenISO(fromISO, toISO) {
+  const from = parseISODateParts(fromISO);
+  const to = parseISODateParts(toISO);
+  const fromUTC = Date.UTC(from.year, from.month - 1, from.day);
+  const toUTC = Date.UTC(to.year, to.month - 1, to.day);
+  return Math.round((toUTC - fromUTC) / (24 * 60 * 60 * 1000));
+}
+
+function getBookingInfo(travelDateISO) {
+  const openDateISO = getBookingOpenDateISO(travelDateISO);
+  const todayISO = getTodayISO();
+  const canBookNow = todayISO >= openDateISO;
+  const daysUntilOpen = canBookNow ? 0 : daysBetweenISO(todayISO, openDateISO);
+
+  return {
+    travelDateDisplay: formatDisplayDate(travelDateISO),
+    openDateDisplay: formatDisplayDate(openDateISO),
+    canBookNow,
+    daysUntilOpen,
+  };
 }
 
 function getNextBookingDate() {
-  return addDaysToISTDate(60);
+  return formatDisplayDate(getNextBookingDateISO());
 }
 
 function parseTimeToMinutes(timeStr) {
@@ -91,6 +119,9 @@ function formatDateRange(startDate, endDate) {
 export {
   IST_TIMEZONE,
   getNextBookingDate,
+  getNextBookingDateISO,
+  getTodayISO,
+  getBookingInfo,
   isJourneyUpcoming,
   formatDisplayDate,
   formatDateRange,

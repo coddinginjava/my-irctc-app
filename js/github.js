@@ -1,10 +1,12 @@
 const TOKEN_KEY = 'irctc_github_token';
-const SHA_KEY = 'irctc_journeys_sha';
+const SHA_KEY_ENC = 'irctc_journeys_enc_sha';
+const SHA_KEY_LEGACY = 'irctc_journeys_legacy_sha';
 
 // Update these to match your GitHub repo before deploying
 export const GITHUB_OWNER = 'coddinginjava';
 export const GITHUB_REPO = 'my-irctc-app';
-export const DATA_PATH = 'data/journeys.json';
+export const DATA_PATH = 'data/journeys.enc.json';
+export const LEGACY_DATA_PATH = 'data/journeys.json';
 
 const API_BASE = 'https://api.github.com';
 
@@ -18,20 +20,21 @@ function setToken(token) {
 
 function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(SHA_KEY);
+  localStorage.removeItem(SHA_KEY_ENC);
+  localStorage.removeItem(SHA_KEY_LEGACY);
 }
 
 function isAuthenticated() {
   return Boolean(getToken());
 }
 
-function getCachedSha() {
-  return localStorage.getItem(SHA_KEY);
+function getCachedSha(shaKey) {
+  return localStorage.getItem(shaKey);
 }
 
-function setCachedSha(sha) {
-  if (sha) localStorage.setItem(SHA_KEY, sha);
-  else localStorage.removeItem(SHA_KEY);
+function setCachedSha(shaKey, sha) {
+  if (sha) localStorage.setItem(shaKey, sha);
+  else localStorage.removeItem(shaKey);
 }
 
 async function githubFetch(path, options = {}) {
@@ -81,53 +84,99 @@ function encodeContent(text) {
   return btoa(binary);
 }
 
-async function fetchJourneysFile() {
+async function fetchFile(path, shaKey) {
   const data = await githubFetch(
-    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}`
+    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`
   );
 
   if (!data) {
-    setCachedSha(null);
-    return { journeys: [] };
+    setCachedSha(shaKey, null);
+    return null;
   }
 
-  setCachedSha(data.sha);
-  const content = decodeContent(data.content);
-  return JSON.parse(content);
+  setCachedSha(shaKey, data.sha);
+  return {
+    sha: data.sha,
+    text: decodeContent(data.content),
+  };
 }
 
-async function getJourneys() {
-  return fetchJourneysFile();
-}
-
-async function saveJourneys(journeyData, retry = true) {
-  const content = JSON.stringify(journeyData, null, 2) + '\n';
-  const sha = getCachedSha();
-
+async function putFile(path, text, shaKey, message, retry = true) {
+  const sha = getCachedSha(shaKey);
   const body = {
-    message: 'Update journeys',
-    content: encodeContent(content),
+    message,
+    content: encodeContent(text),
     ...(sha ? { sha } : {}),
   };
 
   try {
     const result = await githubFetch(
-      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}`,
+      `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }
     );
-    setCachedSha(result.content.sha);
+    setCachedSha(shaKey, result.content.sha);
     return result;
   } catch (err) {
     if (retry && err.status === 409) {
-      await fetchJourneysFile();
-      return saveJourneys(journeyData, false);
+      await fetchFile(path, shaKey);
+      return putFile(path, text, shaKey, message, false);
     }
     throw err;
   }
+}
+
+async function deleteFile(path, shaKey, message) {
+  let sha = getCachedSha(shaKey);
+  if (!sha) {
+    const file = await fetchFile(path, shaKey);
+    if (!file) return;
+    sha = file.sha;
+  }
+
+  await githubFetch(
+    `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`,
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, sha }),
+    }
+  );
+  setCachedSha(shaKey, null);
+}
+
+async function getEncryptedEnvelope() {
+  const file = await fetchFile(DATA_PATH, SHA_KEY_ENC);
+  if (!file) return null;
+  return JSON.parse(file.text);
+}
+
+async function saveEncryptedEnvelope(envelope) {
+  const content = JSON.stringify(envelope, null, 2) + '\n';
+  await putFile(DATA_PATH, content, SHA_KEY_ENC, 'Update encrypted journeys');
+}
+
+async function getLegacyPlaintextJourneys() {
+  const file = await fetchFile(LEGACY_DATA_PATH, SHA_KEY_LEGACY);
+  if (!file) return null;
+  return JSON.parse(file.text);
+}
+
+async function deleteLegacyPlaintextFile() {
+  await deleteFile(LEGACY_DATA_PATH, SHA_KEY_LEGACY, 'Remove plaintext journeys after encryption');
+}
+
+async function encryptedFileExists() {
+  const envelope = await getEncryptedEnvelope();
+  return envelope !== null;
+}
+
+async function legacyFileExists() {
+  const file = await fetchFile(LEGACY_DATA_PATH, SHA_KEY_LEGACY);
+  return file !== null;
 }
 
 export {
@@ -135,6 +184,10 @@ export {
   setToken,
   clearToken,
   isAuthenticated,
-  getJourneys,
-  saveJourneys,
+  getEncryptedEnvelope,
+  saveEncryptedEnvelope,
+  getLegacyPlaintextJourneys,
+  deleteLegacyPlaintextFile,
+  encryptedFileExists,
+  legacyFileExists,
 };
